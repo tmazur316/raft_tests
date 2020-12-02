@@ -4,23 +4,39 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/hashicorp/raft"
+	"github.com/hashicorp/raft-boltdb"
 	"io"
 	"log"
+	"os"
+	"path/filepath"
 	"sync"
 )
 
 type fsm struct {
+	TCPAddr  string
+	BackPath string
+
 	data []string
 	m    sync.Mutex
 
-	logger log.Logger
+	r *raft.Raft
+
+	logger *log.Logger
+}
+
+func NewFsm(HttpAddr, BackendPath string) *fsm {
+	return &fsm{
+		TCPAddr:  HttpAddr,
+		BackPath: BackendPath,
+		logger:   log.New(os.Stderr, "Log", log.LstdFlags),
+	}
 }
 
 type operation struct {
 	value string
 }
 
-func (f *fsm) Apply(log raft.Log) interface{} {
+func (f *fsm) Apply(log *raft.Log) interface{} {
 	var op operation
 	err := json.Unmarshal(log.Data, &op)
 	if err != nil {
@@ -86,4 +102,9 @@ func (f *fsm) Snapshot() (raft.FSMSnapshot, error) {
 	dataCopy := make([]string, len(f.data))
 	copy(dataCopy, f.data)
 	return &Snap{DataCopy: dataCopy}, nil
+}
+
+func (f *fsm) SetUpBoltDb() (*raftboltdb.BoltStore, error) {
+	path := filepath.Join(f.BackPath, "bolt.db")
+	return raftboltdb.NewBoltStore(path)
 }
