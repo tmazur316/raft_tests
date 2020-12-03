@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/hashicorp/raft"
 	"github.com/hashicorp/raft-boltdb"
 	"io"
@@ -40,8 +39,7 @@ func (f *fsm) Apply(log *raft.Log) interface{} {
 	var op operation
 	err := json.Unmarshal(log.Data, &op)
 	if err != nil {
-		//TODO wypisywać do loggera
-		fmt.Println("error")
+		f.logger.Printf("Data unmarshalling error. Log %d\n in term %d\n not applied", log.Index, log.Term)
 		return err
 	}
 	f.m.Lock()
@@ -53,15 +51,13 @@ func (f *fsm) Apply(log *raft.Log) interface{} {
 func (f *fsm) Restore(c io.ReadCloser) error {
 	var b []byte
 	if _, err := c.Read(b); err != nil {
-		//TODO wypisywać do loggera
-		fmt.Println("error")
+		f.logger.Printf("Restore failure. Data was not read properly")
 		return err
 	}
 
 	var data []string
 	if err := json.Unmarshal(b, &data); err != nil {
-		//TODO wpisywać do loggera
-		fmt.Println("error")
+		f.logger.Printf("Restore failure. Data was not unmarshalled properly")
 		return err
 	}
 
@@ -76,15 +72,11 @@ type Snap struct {
 func (s *Snap) Persist(sink raft.SnapshotSink) error {
 	encodedData, err := json.Marshal(s.DataCopy)
 	if err != nil {
-		//TODO wypisywac do loggera
-		fmt.Println("error")
 		sink.Cancel()
 		return err
 	}
 	_, err = sink.Write(encodedData)
 	if err != nil {
-		//TODO wypisywać do loggera
-		fmt.Println("error")
 		sink.Cancel()
 		return err
 	}
@@ -95,7 +87,6 @@ func (s *Snap) Persist(sink raft.SnapshotSink) error {
 func (s *Snap) Release() {}
 
 func (f *fsm) Snapshot() (raft.FSMSnapshot, error) {
-	//TODO sprawdzic mutex
 	f.m.Lock()
 	defer f.m.Unlock()
 

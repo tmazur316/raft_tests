@@ -2,8 +2,8 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"github.com/hashicorp/raft"
+	"log"
 	"net"
 	"os"
 	"os/signal"
@@ -16,27 +16,22 @@ func main() {
 	nodeID := flag.String("id", "", "serverID of a node")
 
 	flag.Parse()
+	l := log.New(os.Stderr, "[RAFT INIT]", log.LstdFlags|log.Lshortfile)
 
 	TCPAddr, err := net.ResolveTCPAddr("tcp", *nodeAddr)
 	if err != nil {
-		//TODO do logu
-		fmt.Println("Bad IP address")
-		return
+		l.Panicf("Invalid IP address %s\n", *nodeAddr)
 	}
 
 	if *nodeID == "" {
-		//TODO log
-		fmt.Println("No server id was specified")
-		return
+		l.Panicln("id was not specified")
 	}
 
 	backAddr := filepath.Join("/home/tomek/Pulpit/boltDB", *nodeID)
 
 	err = os.MkdirAll(backAddr, 0700)
 	if err != nil {
-		//TODO log
-		fmt.Println("Error while creating raft backend directory")
-		return
+		l.Panicln("Error while creating raft backend directory")
 	}
 
 	config := raft.DefaultConfig()
@@ -46,29 +41,25 @@ func main() {
 	boltStore, err := FSM.SetUpBoltDb()
 
 	if err != nil {
-		//TODO log
-		fmt.Println("error while creating boltdb backend")
+		l.Panicln("error while creating boltdb backend")
 	}
 
 	snaps, err := raft.NewFileSnapshotStore(backAddr, 2, os.Stderr)
 
 	if err != nil {
-		//TODO log
-		fmt.Println("error creating Snapshot store")
+		l.Panicln("Snapshot store creation failed")
 	}
 
 	trans, err := raft.NewTCPTransport(*nodeAddr, TCPAddr, 3, 10*time.Second, os.Stderr)
 	r, err := raft.NewRaft(config, FSM, boltStore, boltStore, snaps, trans)
 
 	if err != nil {
-		//TODO log
-		fmt.Println("error initializing raft backend")
-		return
+		l.Fatalf("Raft backend creation error")
 	}
 	FSM.r = r
 
 	r.BootstrapCluster(raft.Configuration{
-		[]raft.Server{
+		Servers: []raft.Server{
 			{
 				ID:      config.LocalID,
 				Address: trans.LocalAddr(),
