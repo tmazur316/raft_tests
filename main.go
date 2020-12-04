@@ -67,6 +67,13 @@ func main() {
 		},
 	})
 
+	h := Handler{
+		addr: "127.0.0.1:5500",
+		f:    FSM,
+	}
+
+	h.StartServer()
+
 	shutChan := make(chan os.Signal, 1)
 	signal.Notify(shutChan, os.Interrupt)
 	<-shutChan
