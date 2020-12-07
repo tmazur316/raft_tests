@@ -13,6 +13,7 @@ import (
 )
 
 type fsm struct {
+	//TODO usunac niepotrzebne pola z tej struktury
 	TCPAddr  string
 	BackPath string
 
@@ -24,7 +25,7 @@ type fsm struct {
 	logger *log.Logger
 }
 
-func NewFsm(HttpAddr, BackendPath string) *fsm {
+func newFSM(HttpAddr, BackendPath string) *fsm {
 	return &fsm{
 		TCPAddr:  HttpAddr,
 		BackPath: BackendPath,

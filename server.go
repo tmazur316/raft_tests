@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/hashicorp/raft"
 	"net"
 	"net/http"
 	"strings"
@@ -14,6 +15,7 @@ type Handler struct {
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	//TODO sprawdzanie czy jestesmy liderem
 	switch r.Method {
 	case "GET":
 		h.handleGet(w, r)
@@ -39,7 +41,14 @@ func (h *Handler) handleGet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handlePost(w http.ResponseWriter, r *http.Request) {
+	s := strings.Split(r.URL.Path, "/")
+	if s[1] == "join" {
+		h.handleJoin(w, r)
+		return
+	}
+
 	kv := map[string]string{}
+
 	d := json.NewDecoder(r.Body)
 	if err := d.Decode(&kv); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -51,7 +60,7 @@ func (h *Handler) handlePost(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		fmt.Fprintf(w, "Inserted: {%s\n, %s\n}", k, v)
+		fmt.Fprintf(w, "Insert: {%s\n, %s\n}", k, v)
 	}
 }
 
@@ -79,4 +88,19 @@ func (h *Handler) StartServer() {
 
 	http.Handle("/", h)
 	http.Serve(l, h)
+}
+
+func (h *Handler) handleJoin(w http.ResponseWriter, r *http.Request) {
+	j := map[string]string{}
+
+	d := json.NewDecoder(r.Body)
+	if err := d.Decode(&j); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	err := h.f.r.AddVoter(raft.ServerID(j["Id"]), raft.ServerAddress(j["Address"]), 0, 0)
+	if err.Error() != nil {
+		//TODO wpisać coś
+	}
 }
