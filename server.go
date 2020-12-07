@@ -4,18 +4,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/hashicorp/raft"
+	"log"
 	"net"
 	"net/http"
 	"strings"
 )
 
 type Handler struct {
-	f    *fsm
-	addr string
+	f        *fsm
+	httpAddr string
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	//TODO sprawdzanie czy jestesmy liderem
 	switch r.Method {
 	case "GET":
 		h.handleGet(w, r)
@@ -37,7 +37,7 @@ func (h *Handler) handleGet(w http.ResponseWriter, r *http.Request) {
 
 	k := s[1]
 	v := h.f.Get(k)
-	fmt.Fprintf(w, "{Key: %s\n, Value: %s\n}", k, v)
+	fmt.Fprintf(w, "{Key: %s, Value: %s}\n", k, v)
 }
 
 func (h *Handler) handlePost(w http.ResponseWriter, r *http.Request) {
@@ -57,10 +57,9 @@ func (h *Handler) handlePost(w http.ResponseWriter, r *http.Request) {
 
 	for k, v := range kv {
 		if err := h.f.Insert(k, v); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
+			fmt.Fprintf(w, "Error while trying to insert  value {%s, %s}\n", k, v)
 		}
-		fmt.Fprintf(w, "Insert: {%s\n, %s\n}", k, v)
+		fmt.Fprintf(w, "Insert: {%s, %s}\n", k, v)
 	}
 }
 
@@ -80,10 +79,10 @@ func (h *Handler) handleDelete(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) StartServer() {
-	l, err := net.Listen("tcp", h.addr)
+	l, err := net.Listen("tcp", h.httpAddr)
 
 	if err != nil {
-		h.f.logger.Panic("Failed to start http server")
+		log.Fatalf("Failed to start http server")
 	}
 
 	http.Handle("/", h)
@@ -101,6 +100,6 @@ func (h *Handler) handleJoin(w http.ResponseWriter, r *http.Request) {
 
 	err := h.f.r.AddVoter(raft.ServerID(j["Id"]), raft.ServerAddress(j["Address"]), 0, 0)
 	if err.Error() != nil {
-		//TODO wpisać coś
+		fmt.Fprintf(w, "Attempt to join the cluster failed")
 	}
 }

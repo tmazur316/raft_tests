@@ -32,7 +32,7 @@ func NewRaftNode(nodeID, raftAddr, httpAddr string) (*RaftNode, error) {
 		return nil, fmt.Errorf("db directory creation failed at path %s\n", dbPath)
 	}
 
-	f := newFSM(raftAddr, dbPath)
+	f := newFSM(dbPath)
 
 	//create new raft backend
 	r, err := createRaft(f, nodeID, raftAddr)
@@ -41,8 +41,8 @@ func NewRaftNode(nodeID, raftAddr, httpAddr string) (*RaftNode, error) {
 	}
 
 	h := Handler{
-		f:    f,
-		addr: httpAddr,
+		f:        f,
+		httpAddr: httpAddr,
 	}
 
 	return &RaftNode{
@@ -84,7 +84,6 @@ func createRaft(FSM *fsm, nodeID, raftAddr string) (*raft.Raft, error) {
 	//initialize raft node
 	r, err := raft.NewRaft(config, FSM, boltStore, boltStore, snapStore, trans)
 
-	//TODO usunac to po zmianach w fsm.go
 	FSM.r = r
 
 	return r, err

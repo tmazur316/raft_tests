@@ -13,24 +13,21 @@ import (
 )
 
 type fsm struct {
-	//TODO usunac niepotrzebne pola z tej struktury
-	TCPAddr  string
-	BackPath string
+	dbPath string
 
-	data map[string]string
 	m    sync.Mutex
+	data map[string]string
 
 	r *raft.Raft
 
-	logger *log.Logger
+	l *log.Logger
 }
 
-func newFSM(HttpAddr, BackendPath string) *fsm {
+func newFSM(BackendPath string) *fsm {
 	return &fsm{
-		TCPAddr:  HttpAddr,
-		BackPath: BackendPath,
-		logger:   log.New(os.Stderr, "Log", log.LstdFlags),
-		data:     make(map[string]string),
+		dbPath: BackendPath,
+		l:      log.New(os.Stderr, "Log", log.LstdFlags),
+		data:   make(map[string]string),
 	}
 }
 
@@ -44,7 +41,7 @@ func (f *fsm) Apply(log *raft.Log) interface{} {
 	var op operation
 	err := json.Unmarshal(log.Data, &op)
 	if err != nil {
-		f.logger.Printf("Data unmarshalling error. Log %d\n in term %d\n not applied", log.Index, log.Term)
+		f.l.Printf("Data unmarshalling error. Log %d\n in term %d\n not applied", log.Index, log.Term)
 		return err
 	}
 
@@ -60,7 +57,7 @@ func (f *fsm) Apply(log *raft.Log) interface{} {
 		delete(f.data, op.Key)
 
 	default:
-		f.logger.Printf("Wrong operation type: %s\n", op.OpType)
+		f.l.Printf("Wrong operation type: %s\n", op.OpType)
 		return err
 	}
 	return nil
@@ -69,13 +66,13 @@ func (f *fsm) Apply(log *raft.Log) interface{} {
 func (f *fsm) Restore(c io.ReadCloser) error {
 	var b []byte
 	if _, err := c.Read(b); err != nil {
-		f.logger.Printf("Restore failure. Data was not read properly")
+		f.l.Printf("Restore failure. Data was not read properly")
 		return err
 	}
 
 	var data = make(map[string]string)
 	if err := json.Unmarshal(b, &data); err != nil {
-		f.logger.Printf("Restore failure. Data was not unmarshalled properly")
+		f.l.Printf("Restore failure. Data was not unmarshalled properly")
 		return err
 	}
 
@@ -116,7 +113,7 @@ func (f *fsm) Snapshot() (raft.FSMSnapshot, error) {
 }
 
 func (f *fsm) SetUpBoltDb() (*raftboltdb.BoltStore, error) {
-	path := filepath.Join(f.BackPath, "bolt.db")
+	path := filepath.Join(f.dbPath, "bolt.db")
 	return raftboltdb.NewBoltStore(path)
 }
 
@@ -129,7 +126,7 @@ func (f *fsm) Insert(k, v string) error {
 
 	d, err := json.Marshal(&op)
 	if err != nil {
-		f.logger.Printf("Data marshalling error. Insert failed")
+		f.l.Printf("Data marshalling error. Insert failed")
 		return err
 	}
 
@@ -146,7 +143,7 @@ func (f *fsm) Delete(k string) error {
 
 	d, err := json.Marshal(&op)
 	if err != nil {
-		f.logger.Printf("Data marshalling error. Insert failed")
+		f.l.Printf("Data marshalling error. Insert failed")
 		return err
 	}
 
