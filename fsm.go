@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"github.com/hashicorp/raft"
 	"github.com/hashicorp/raft-boltdb"
@@ -64,14 +65,14 @@ func (f *fsm) Apply(log *raft.Log) interface{} {
 }
 
 func (f *fsm) Restore(c io.ReadCloser) error {
-	var b []byte
-	if _, err := c.Read(b); err != nil {
+	buf := new(bytes.Buffer)
+	if _, err := buf.ReadFrom(c); err != nil {
 		f.l.Printf("Restore failure. Data was not read properly")
 		return err
 	}
 
 	var data = make(map[string]string)
-	if err := json.Unmarshal(b, &data); err != nil {
+	if err := json.Unmarshal(buf.Bytes(), &data); err != nil {
 		f.l.Printf("Restore failure. Data was not unmarshalled properly")
 		return err
 	}

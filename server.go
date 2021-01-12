@@ -15,6 +15,19 @@ type Handler struct {
 	httpAddr string
 }
 
+func (h *Handler) StartServer() {
+	l, err := net.Listen("tcp", h.httpAddr)
+
+	if err != nil {
+		log.Fatalf("Failed to start http server")
+	}
+
+	http.Handle("/", h)
+	if err := http.Serve(l, h); err != nil {
+		log.Fatalf("Http server failed")
+	}
+}
+
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
@@ -47,6 +60,11 @@ func (h *Handler) handlePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if s[1] == "snapshot" {
+		h.handleSnapshot()
+		return
+	}
+
 	kv := map[string]string{}
 
 	d := json.NewDecoder(r.Body)
@@ -65,6 +83,14 @@ func (h *Handler) handlePost(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) handleDelete(w http.ResponseWriter, r *http.Request) {
 	s := strings.Split(r.URL.Path, "/")
+
+	//todo rozwiazac problem klucza "remove"
+	if s[1] == "remove" {
+		//todo error handling
+		h.handleRemove(w, s[2])
+		return
+	}
+
 	if len(s) < 2 {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -76,17 +102,6 @@ func (h *Handler) handleDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fmt.Fprintf(w, "Deleted if existed, Key: %s\n", k)
-}
-
-func (h *Handler) StartServer() {
-	l, err := net.Listen("tcp", h.httpAddr)
-
-	if err != nil {
-		log.Fatalf("Failed to start http server")
-	}
-
-	http.Handle("/", h)
-	http.Serve(l, h)
 }
 
 func (h *Handler) handleJoin(w http.ResponseWriter, r *http.Request) {
@@ -101,5 +116,18 @@ func (h *Handler) handleJoin(w http.ResponseWriter, r *http.Request) {
 	err := h.f.r.AddVoter(raft.ServerID(j["Id"]), raft.ServerAddress(j["Address"]), 0, 0)
 	if err.Error() != nil {
 		fmt.Fprintf(w, "Attempt to join the cluster failed")
+	}
+}
+
+func (h *Handler) handleSnapshot() {
+	h.f.r.Snapshot()
+}
+
+func (h *Handler) handleRemove(w http.ResponseWriter, Id string) {
+	//remove server from the cluster
+	err := h.f.r.RemoveServer(raft.ServerID(Id), 0, 0)
+	if err.Error() != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "Removing server from the cluster failed\n")
 	}
 }

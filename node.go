@@ -26,7 +26,7 @@ func NewRaftNode(nodeID, raftAddr, httpAddr string) (*RaftNode, error) {
 	}
 
 	//create new FSM
-	dbPath := filepath.Join("/home/tomek/Pulpit/boltDB", nodeID)
+	dbPath := filepath.Join("./boltDB", nodeID)
 
 	if err = os.MkdirAll(dbPath, 0700); err != nil {
 		return nil, fmt.Errorf("db directory creation failed at path %s\n", dbPath)
@@ -37,7 +37,7 @@ func NewRaftNode(nodeID, raftAddr, httpAddr string) (*RaftNode, error) {
 	//create new raft backend
 	r, err := createRaft(f, nodeID, raftAddr)
 	if err != nil {
-		return nil, fmt.Errorf("raft backend initialization failed")
+		return nil, err
 	}
 
 	h := Handler{
@@ -66,6 +66,7 @@ func createRaft(FSM *fsm, nodeID, raftAddr string) (*raft.Raft, error) {
 	//use default raft server config
 	config := raft.DefaultConfig()
 	config.LocalID = raft.ServerID(nodeID)
+	config.ShutdownOnRemove = true
 
 	//use boltDB as a LogStore and StableStore
 	boltStore, err := FSM.SetUpBoltDb()
@@ -74,7 +75,7 @@ func createRaft(FSM *fsm, nodeID, raftAddr string) (*raft.Raft, error) {
 	}
 
 	//create SnapshotStore
-	dbPath := filepath.Join("/home/tomek/Pulpit/boltDB", nodeID)
+	dbPath := filepath.Join("./boltDB", nodeID)
 
 	snapStore, err := raft.NewFileSnapshotStore(dbPath, 2, os.Stderr)
 	if err != nil {
