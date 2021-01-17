@@ -5,7 +5,6 @@ import (
 	"github.com/hashicorp/raft"
 	"log"
 	"os"
-	"os/signal"
 )
 
 func main() {
@@ -16,7 +15,7 @@ func main() {
 	joinAddr := flag.String("joinAddr", "", "Cluster address to join")
 
 	flag.Parse()
-	l := log.New(os.Stderr, "[RAFT INIT]", log.LstdFlags|log.Lshortfile)
+	l := log.New(os.Stderr, "[RAFT]", log.LstdFlags|log.Lshortfile)
 
 	node, err := NewRaftNode(*nodeID, *raftAddr, *httpAddr)
 	if err != nil {
@@ -41,9 +40,7 @@ func main() {
 		}
 	}
 
-	node.handler.StartServer()
-
-	shutChan := make(chan os.Signal, 1)
-	signal.Notify(shutChan, os.Interrupt)
-	<-shutChan
+	if err := node.handler.StartServer(); err != nil {
+		l.Print(err)
+	}
 }
