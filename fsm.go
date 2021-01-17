@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-	"time"
 )
 
 type fsm struct {
@@ -42,7 +41,6 @@ func (f *fsm) Apply(log *raft.Log) interface{} {
 	var op operation
 	err := json.Unmarshal(log.Data, &op)
 	if err != nil {
-		f.l.Printf("Data unmarshalling error. Log %d\n in term %d\n not applied", log.Index, log.Term)
 		return err
 	}
 
@@ -56,6 +54,13 @@ func (f *fsm) Apply(log *raft.Log) interface{} {
 		f.m.Lock()
 		defer f.m.Unlock()
 		delete(f.data, op.Key)
+
+	case "Upd":
+		f.m.Lock()
+		defer f.m.Unlock()
+		if _, ok := f.data[op.Key]; ok {
+			f.data[op.Key] = op.Value
+		}
 
 	default:
 		f.l.Printf("Wrong operation type: %s\n", op.OpType)
@@ -127,11 +132,12 @@ func (f *fsm) Insert(k, v string) error {
 
 	d, err := json.Marshal(&op)
 	if err != nil {
-		f.l.Printf("Data marshalling error. Insert failed")
 		return err
 	}
 
-	f.r.Apply(d, 5*time.Second)
+	if e := f.r.Apply(d, 0); e.Error() != nil {
+		return e.Error()
+	}
 
 	return nil
 }
@@ -148,7 +154,7 @@ func (f *fsm) Delete(k string) error {
 		return err
 	}
 
-	f.r.Apply(d, 5*time.Second)
+	f.r.Apply(d, 0)
 
 	return nil
 }
@@ -157,4 +163,24 @@ func (f *fsm) Get(k string) string {
 	f.m.Lock()
 	defer f.m.Unlock()
 	return f.data[k]
+}
+
+func (f *fsm) Update(k, v string) error {
+	op := operation{
+		OpType: "Upd",
+		Key:    k,
+		Value:  v,
+	}
+
+	d, err := json.Marshal(&op)
+	if err != nil {
+		return err
+	}
+
+	e := f.r.Apply(d, 0)
+	if e.Error() != nil {
+		return e.Error()
+	}
+
+	return nil
 }

@@ -22,14 +22,14 @@ func NewRaftNode(nodeID, raftAddr, httpAddr string) (*RaftNode, error) {
 	var err error
 
 	if len(nodeID) == 0 {
-		return nil, fmt.Errorf("nodeId cannot be empty string")
+		return nil, err
 	}
 
 	//create new FSM
 	dbPath := filepath.Join("./boltDB", nodeID)
 
 	if err = os.MkdirAll(dbPath, 0700); err != nil {
-		return nil, fmt.Errorf("db directory creation failed at path %s\n", dbPath)
+		return nil, err
 	}
 
 	f := newFSM(dbPath)
@@ -58,7 +58,7 @@ func createRaft(FSM *fsm, nodeID, raftAddr string) (*raft.Raft, error) {
 	//initialize TCP transport
 	rAddr, err := net.ResolveTCPAddr("tcp", raftAddr)
 	if err != nil {
-		return nil, fmt.Errorf("invalid raftAddr argument: %s\n", raftAddr)
+		return nil, err
 	}
 
 	trans, err := raft.NewTCPTransport(raftAddr, rAddr, 3, 10*time.Second, os.Stderr)
@@ -71,7 +71,7 @@ func createRaft(FSM *fsm, nodeID, raftAddr string) (*raft.Raft, error) {
 	//use boltDB as a LogStore and StableStore
 	boltStore, err := FSM.SetUpBoltDb()
 	if err != nil {
-		return nil, fmt.Errorf("invalid raftAddr argument: %s\n", raftAddr)
+		return nil, err
 	}
 
 	//create SnapshotStore
@@ -79,7 +79,7 @@ func createRaft(FSM *fsm, nodeID, raftAddr string) (*raft.Raft, error) {
 
 	snapStore, err := raft.NewFileSnapshotStore(dbPath, 2, os.Stderr)
 	if err != nil {
-		return nil, fmt.Errorf("snapshot store creation failed")
+		return nil, err
 	}
 
 	//initialize raft node
