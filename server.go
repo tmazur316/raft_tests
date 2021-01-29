@@ -48,9 +48,21 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleGet(w http.ResponseWriter, r *http.Request) {
+	if h.f.r.State() != 2 {
+		leader := h.f.r.Leader()
+		w.WriteHeader(http.StatusSeeOther)
+		fmt.Fprintf(w, string(leader))
+		return
+	}
+
 	s := strings.Split(r.URL.Path, "/")
 	if len(s) < 2 {
 		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if s[1] == "leader" {
+		fmt.Fprintf(w, string(h.f.r.Leader()))
 		return
 	}
 
@@ -68,6 +80,13 @@ func (h *Handler) handlePost(w http.ResponseWriter, r *http.Request) {
 
 	if s[1] == "snapshot" {
 		h.handleSnapshot(w)
+		return
+	}
+
+	if h.f.r.State() != 2 {
+		leader := h.f.r.Leader()
+		w.WriteHeader(http.StatusSeeOther)
+		fmt.Fprintf(w, string(leader))
 		return
 	}
 
@@ -101,6 +120,13 @@ func (h *Handler) handleDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if h.f.r.State() != 2 {
+		leader := h.f.r.Leader()
+		w.WriteHeader(http.StatusSeeOther)
+		fmt.Fprintf(w, string(leader))
+		return
+	}
+
 	if len(s) < 2 {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -115,6 +141,13 @@ func (h *Handler) handleDelete(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleJoin(w http.ResponseWriter, r *http.Request) {
+	if h.f.r.State() != 2 {
+		leader := h.f.r.Leader()
+		w.WriteHeader(http.StatusSeeOther)
+		fmt.Fprintf(w, string(leader))
+		return
+	}
+
 	j := map[string]string{}
 
 	d := json.NewDecoder(r.Body)
@@ -135,11 +168,17 @@ func (h *Handler) handleSnapshot(w http.ResponseWriter) {
 		fmt.Fprint(w, err)
 		return
 	}
-	fmt.Fprint(w, "snapshot created successfully")
+	fmt.Fprint(w, "snapshot created successfully\n")
 }
 
 func (h *Handler) handleRemove(w http.ResponseWriter, Id string) {
-	//remove server from the cluster
+	if h.f.r.State() != 2 {
+		leader := h.f.r.Leader()
+		w.WriteHeader(http.StatusSeeOther)
+		fmt.Fprintf(w, string(leader))
+		return
+	}
+
 	err := h.f.r.RemoveServer(raft.ServerID(Id), 0, 0)
 	if err.Error() != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -148,6 +187,13 @@ func (h *Handler) handleRemove(w http.ResponseWriter, Id string) {
 }
 
 func (h *Handler) handlePatch(w http.ResponseWriter, r *http.Request) {
+	if h.f.r.State() != 2 {
+		leader := h.f.r.Leader()
+		w.WriteHeader(http.StatusSeeOther)
+		fmt.Fprintf(w, string(leader))
+		return
+	}
+
 	kv := map[string]string{}
 
 	d := json.NewDecoder(r.Body)
