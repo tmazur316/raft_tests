@@ -50,7 +50,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handleGet(w http.ResponseWriter, r *http.Request) {
 	if h.f.r.State() != 2 {
 		leader := h.f.r.Leader()
-		w.WriteHeader(http.StatusSeeOther)
+		w.WriteHeader(http.StatusMethodNotAllowed)
 		fmt.Fprintf(w, string(leader))
 		return
 	}
@@ -85,7 +85,7 @@ func (h *Handler) handlePost(w http.ResponseWriter, r *http.Request) {
 
 	if h.f.r.State() != 2 {
 		leader := h.f.r.Leader()
-		w.WriteHeader(http.StatusSeeOther)
+		w.WriteHeader(http.StatusMethodNotAllowed)
 		fmt.Fprintf(w, string(leader))
 		return
 	}
@@ -122,7 +122,7 @@ func (h *Handler) handleDelete(w http.ResponseWriter, r *http.Request) {
 
 	if h.f.r.State() != 2 {
 		leader := h.f.r.Leader()
-		w.WriteHeader(http.StatusSeeOther)
+		w.WriteHeader(http.StatusMethodNotAllowed)
 		fmt.Fprintf(w, string(leader))
 		return
 	}
@@ -143,7 +143,7 @@ func (h *Handler) handleDelete(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handleJoin(w http.ResponseWriter, r *http.Request) {
 	if h.f.r.State() != 2 {
 		leader := h.f.r.Leader()
-		w.WriteHeader(http.StatusSeeOther)
+		w.WriteHeader(http.StatusMethodNotAllowed)
 		fmt.Fprintf(w, string(leader))
 		return
 	}
@@ -174,7 +174,7 @@ func (h *Handler) handleSnapshot(w http.ResponseWriter) {
 func (h *Handler) handleRemove(w http.ResponseWriter, Id string) {
 	if h.f.r.State() != 2 {
 		leader := h.f.r.Leader()
-		w.WriteHeader(http.StatusSeeOther)
+		w.WriteHeader(http.StatusMethodNotAllowed)
 		fmt.Fprintf(w, string(leader))
 		return
 	}
@@ -189,7 +189,7 @@ func (h *Handler) handleRemove(w http.ResponseWriter, Id string) {
 func (h *Handler) handlePatch(w http.ResponseWriter, r *http.Request) {
 	if h.f.r.State() != 2 {
 		leader := h.f.r.Leader()
-		w.WriteHeader(http.StatusSeeOther)
+		w.WriteHeader(http.StatusMethodNotAllowed)
 		fmt.Fprintf(w, string(leader))
 		return
 	}
